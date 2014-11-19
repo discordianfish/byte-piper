@@ -1,0 +1,24 @@
+{
+  "input": {
+    "type": "file",
+    "config": {
+      "path": "test.txt"
+    }
+  },
+  "filters": {
+    "type": "rot13",
+    "next": {
+      "type": "rot13",
+      "next": {
+        "type": "rot13"
+      }
+    }
+  },
+  "output": {
+    "type": "file",
+    "config": {
+      "path": "output.txt"
+    }
+  }
+}
+

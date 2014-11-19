@@ -1,0 +1,15 @@
+{
+  "input": {
+    "type": "tar",
+    "config": {
+      "path": "/home/fish/test"
+    }
+  },
+  "output": {
+    "type": "file",
+    "config": {
+      "path": "output.tar"
+    }
+  }
+}
+
