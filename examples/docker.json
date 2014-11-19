@@ -1,0 +1,15 @@
+{
+  "input": {
+    "type": "docker",
+    "config": {
+      "name": "foo-data"
+    }
+  },
+  "output": {
+    "type": "file",
+    "config": {
+      "path": "output.tar"
+    }
+  }
+}
+
