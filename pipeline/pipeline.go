@@ -104,6 +104,9 @@ func (p *pipeline) Run() error {
 		last = f
 	}
 	_, err := io.Copy(p.output, last)
+	if err := p.output.Close(); err != nil {
+		return err
+	}
 	return err
 }
 
