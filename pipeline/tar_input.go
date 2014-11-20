@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"archive/tar"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -20,15 +21,20 @@ func init() {
 }
 
 func newTarInput(conf map[string]string) (input, error) {
+	path := conf["path"]
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil, fmt.Errorf("%s does not exist", path)
+	}
+
 	r, w := io.Pipe()
 	tarWriter := tar.NewWriter(w)
 	ti := &tarInput{
-		path:      conf["path"],
+		path:      path,
 		tarWriter: tarWriter,
 		r:         r,
 	}
 	go func(w io.WriteCloser) {
-		filepath.Walk(conf["path"], ti.addFile)
+		filepath.Walk(path, ti.addFile)
 		ti.tarWriter.Close() // This doesn *not* close the embedded writer
 		w.Close()            // So we do it here
 	}(w)
