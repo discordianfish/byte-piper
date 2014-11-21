@@ -48,7 +48,7 @@ func newPGPFilter(conf map[string]string) (filter, error) {
 	return f, nil
 }
 
-func (f *pgpFilter) Link(r io.Reader) {
+func (f *pgpFilter) Link(r io.Reader) error {
 	go func() {
 		// openpgp.Encrypt() blocks and waits for some input,
 		// so we need to wait for it before we can read from
@@ -61,6 +61,7 @@ func (f *pgpFilter) Link(r io.Reader) {
 			return
 		}
 	}()
+	return nil
 }
 
 func (f *pgpFilter) Read(p []byte) (n int, err error) {

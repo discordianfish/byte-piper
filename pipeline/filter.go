@@ -4,5 +4,5 @@ import "io"
 
 type filter interface {
 	io.Reader
-	Link(r io.Reader)
+	Link(r io.Reader) error
 }

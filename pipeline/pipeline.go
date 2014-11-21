@@ -100,7 +100,9 @@ func (p *pipeline) Run() error {
 	last := p.input
 	for _, f := range p.filters {
 		log.Printf("Link %v -> %v", last, f)
-		f.Link(last)
+		if err := f.Link(last); err != nil {
+			return err
+		}
 		last = f
 	}
 	_, err := io.Copy(p.output, last)

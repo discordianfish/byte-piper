@@ -14,8 +14,9 @@ func newRot13Filter(map[string]string) (filter, error) {
 	return &rot13Filter{}, nil
 }
 
-func (f *rot13Filter) Link(r io.Reader) {
+func (f *rot13Filter) Link(r io.Reader) error {
 	f.r = r
+	return nil
 }
 
 func (tp *rot13Filter) Read(p []byte) (n int, err error) {
