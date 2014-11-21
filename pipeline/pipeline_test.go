@@ -5,9 +5,18 @@ import (
 	"testing"
 )
 
+// dummy buffer for testing
+type buffer struct {
+	bytes.Buffer
+}
+
+func (b *buffer) Close() (err error) {
+	return
+}
+
 func TestPipeline(t *testing.T) {
 	in := bytes.NewBuffer([]byte("Hello World"))
-	out := &bytes.Buffer{}
+	out := &buffer{} //bytes.Buffer{}
 
 	p := &pipeline{
 		input:  in,
