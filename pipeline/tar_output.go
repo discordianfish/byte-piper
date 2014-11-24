@@ -44,10 +44,14 @@ func newUntarOutput(conf map[string]string) (output, error) {
 			}
 			path := filepath.Join(path, hdr.Name)
 			info := hdr.FileInfo()
+			_, errOld := os.Lstat(path)
+			log.Print(path)
 			if info.IsDir() {
-				if err := os.Mkdir(path, info.Mode()); err != nil {
-					log.Print(err)
-					return
+				if os.IsNotExist(errOld) {
+					if err := os.Mkdir(path, info.Mode()); err != nil {
+						log.Print(err)
+						return
+					}
 				}
 				if err := os.Chown(path, hdr.Uid, hdr.Gid); err != nil {
 					log.Print(err)
