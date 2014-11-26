@@ -1,17 +1,23 @@
 package pipeline
 
 import (
+	"bufio"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 )
 
+const defaultOutputBuffer = 1 * 1024 * 1024
+
 var (
 	inputMap  = make(map[string]func(conf map[string]string) (input, error))
 	filterMap = make(map[string]func(conf map[string]string) (filter, error))
 	outputMap = make(map[string]func(conf map[string]string) (output, error))
+
+	outputBuffer = flag.Int("b", defaultOutputBuffer, "Size of output buffer")
 )
 
 type pipeline struct {
@@ -105,11 +111,20 @@ func (p *pipeline) Run() error {
 		}
 		last = f
 	}
-	_, err := io.Copy(p.output, last)
+	buf := bufio.NewWriterSize(p.output, *outputBuffer)
+	if _, err := io.Copy(buf, last); err != nil {
+		return err
+	}
+	log.Print("copied")
+	if err := buf.Flush(); err != nil {
+		return err
+	}
+	log.Print("flushed")
 	if err := p.output.Close(); err != nil {
 		return err
 	}
-	return err
+	log.Print("closed")
+	return nil
 }
 
 func assert(err error) {
