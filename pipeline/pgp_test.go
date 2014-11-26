@@ -3,10 +3,17 @@ package pipeline
 import (
 	"bytes"
 	"io"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"strings"
 	"testing"
 )
 
-const privatKey = `-----BEGIN PGP PRIVATE KEY BLOCK-----
+const tempPrefix = "byte-piper-test"
+
+const (
+	privatKey = `-----BEGIN PGP PRIVATE KEY BLOCK-----
 Version: GnuPG v1
 
 lQOYBFRzNl0BCADH/cTVwyaRoxm5uHPAbQ8ltadLkvWgSbOMXM6Z8yeF3njiNxNo
@@ -64,8 +71,7 @@ OHUeQCmqzo4z737LeL7ekrNgI8g/6+93KKMNL6j2nzfSvMCtpvpppeaY
 =k5D4
 -----END PGP PRIVATE KEY BLOCK-----
 `
-
-const pubKey = `-----BEGIN PGP PUBLIC KEY BLOCK-----
+	pubKey = `-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1
 
 mQENBFRzNl0BCADH/cTVwyaRoxm5uHPAbQ8ltadLkvWgSbOMXM6Z8yeF3njiNxNo
@@ -96,9 +102,28 @@ zo4z737LeL7ekrNgI8g/6+93KKMNL6j2nzfSvMCtpvpppeaY
 =i8mq
 -----END PGP PUBLIC KEY BLOCK-----
 `
+	keyId        = "3DF5C9AE"
+	expectedText = `ἔστι δὲ ἡ σκυτάλη τοιοῦτον. ἐπὰν ἐκπέµπωσι ναύαρχον ἢ
+στρατηγὸν οἱ ἔφοροι, ξύλα δύο στρογγύλα µῆκος καὶ πάχος ἀκριβῶς
+ἀπισώσαντες, ὥστε ταῖς τοµαῖς ἐφαρµόζειν πρὸς ἄλληλα, τὸ µὲν αὐτοὶ
+φυλάττουσι, θάτερον δὲ τῷ πεµποµένῳ διδόασι. ταῦτα δὲ τὰ ξύλα
+σκυτάλας καλοῦσιν. ὅταν οὖν ἀπόρρητόν τι καὶ µέγα φράσαι
+βουληθῶσι, βιβλίον ὥσπερ ἱµάντα µακρὸν καὶ στενὸν ποιοῦντες
+περιελίττουσι τὴν παρ' αὐτοῖς σκυτάλην, οὐδὲν διάλειµµα ποιοῦντες, 
+ἀλλὰ πανταχόθεν κύκλῳ τὴν ἐπιφάνειαν αὐτῆς τῷ βιβλίῳ
+καταλαµβάνοντες. τοῦτο δὲ ποιήσαντες ἃ βούλονται καταγράφουσιν εἰς
+τὸ βιβλίον, ὥσπερ ἐστὶ τῇ σκυτάλῃ περικείµενον· ὅταν δὲ γράψωσιν, 
+ἀφελόντες τὸ βιβλίον ἄνευ τοῦ ξύλου πρὸς τὸν στρατηγὸν ἀποστέλλουσι. 
+δεξάµενος δὲ ἐκεῖνος ἄλλως µὲν οὐδὲν ἀναλέξασθαι δύναται τῶν
+γραµµάτων συναφὴν οὐκ ἐχόντων, ἀλλὰ διεσπασµένων, τὴν δὲ παρ' αὑτῷ
+σκυτάλην λαβὼν τὸ τµῆµα τοῦ βιβλίου περὶ αὐτὴν περιέτεινεν, ὥστε, τῆς
+ἕλικος εἰς τάξιν ὁµοίως ἀποκαθισταµένης, ἐπιβάλλοντα τοῖς πρώτοις τὰ
+δεύτερα, κύκλῳ τὴν ὄψιν ἐπάγειν τὸ συνεχὲς ἀνευρίσκουσαν. καλεῖται δὲ
+ὁµωνύµως τῷ ξύλῳ σκυτάλη τὸ βιβλίον, ὡς τῷ µετροῦντι τὸ µετρούµενον.`
+)
 
 func TestPGP(t *testing.T) {
-	in := bytes.NewBuffer([]byte("Hello World"))
+	in := bytes.NewBuffer([]byte(expectedText))
 	out := &bytes.Buffer{}
 
 	pgp, err := newPGPFilter(map[string]string{"pubkey": pubKey})
@@ -121,7 +146,87 @@ func TestPGP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if out.String() != "Hello World" {
+	if out.String() != expectedText {
 		t.Fatal("Unexpected string %s", out.String())
 	}
+}
+
+func TestPGPforGPG(t *testing.T) {
+	in := bytes.NewBuffer([]byte(expectedText))
+
+	pgp, err := newPGPFilter(map[string]string{"pubkey": pubKey})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := pgp.Link(in); err != nil {
+		t.Fatal(err)
+	}
+
+	gpgHome, err := ioutil.TempDir("", tempPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(gpgHome)
+
+	if err := gpgImportKey(gpgHome, privatKey); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command("gpg", "--homedir", gpgHome, "-d")
+	cmd.Stdin = pgp
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	out, err := ioutil.ReadAll(stdout)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd.Wait()
+	if string(out) != expectedText {
+		t.Fatalf("Unexpected string %s", out)
+	}
+
+}
+
+func TestGPGforPGP(t *testing.T) {
+	gpgHome, err := ioutil.TempDir("", tempPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(gpgHome)
+
+	unpgp, err := newUnpgpFilter(map[string]string{"privatkey": privatKey})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := gpgImportKey(gpgHome, pubKey); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("gpg", "--homedir", gpgHome, "-er", keyId, "--trust-model", "always")
+	cmd.Stdin = strings.NewReader(expectedText)
+	stdout, err := cmd.StdoutPipe()
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := unpgp.Link(stdout); err != nil {
+		t.Fatal(err)
+	}
+	out, err := ioutil.ReadAll(unpgp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(out) != expectedText {
+		t.Fatalf("Unexpected string '%s'", out)
+	}
+}
+
+func gpgImportKey(home, key string) error {
+	cmd := exec.Command("gpg", "--homedir", home, "--import")
+	cmd.Stdin = strings.NewReader(key)
+	return cmd.Run()
 }
