@@ -66,7 +66,7 @@ func (i *tarInput) addFile(path string, info os.FileInfo, err error) error {
 		return err
 	}
 
-	if !info.Mode().IsDir() {
+	if !info.Mode().IsDir() && th.Typeflag != tar.TypeSymlink {
 		file, err := os.Open(path)
 		if err != nil {
 			return err
