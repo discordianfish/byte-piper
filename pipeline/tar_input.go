@@ -34,9 +34,11 @@ func newTarInput(conf map[string]string) (input, error) {
 		r:         r,
 	}
 	go func(w io.WriteCloser) {
-		filepath.Walk(path, ti.addFile)
-		ti.tarWriter.Close() // This doesn *not* close the embedded writer
-		w.Close()            // So we do it here
+		defer ti.tarWriter.Close() // This doesn *not* close the embedded writer
+		defer w.Close()            // So we do it here
+		if err := filepath.Walk(path, ti.addFile); err != nil {
+			log.Print(err)
+		}
 	}(w)
 	return ti, nil
 }
@@ -71,10 +73,12 @@ func (i *tarInput) addFile(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
+		defer file.Close()
 		log.Printf("copying file %s", path)
 		if _, err := io.Copy(i.tarWriter, file); err != nil {
 			return err
 		}
+
 		log.Printf("done!")
 	}
 	return nil
