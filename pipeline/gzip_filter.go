@@ -24,13 +24,15 @@ func (f *gzipFilter) Link(r io.Reader) error {
 
 	zw := gzip.NewWriter(pw)
 	go func() {
-		defer pw.Close()
 		defer zw.Close()
 		_, err := io.Copy(zw, r)
 		if err != nil {
+			pr.CloseWithError(err)
+			pw.CloseWithError(err)
 			log.Print(err)
 			return
 		}
+		pw.Close()
 	}()
 	return nil
 }

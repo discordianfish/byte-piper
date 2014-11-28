@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -81,17 +80,17 @@ func (i *dockerInput) store(container *container, containerJSON []byte) {
 		ChangeTime: now,
 		Mode:       0644,
 	}); err != nil {
-		log.Print(err)
+		i.w.CloseWithError(err)
 		return
 	}
 	if _, err := i.tw.Write(containerJSON); err != nil {
-		log.Print(err)
+		i.w.CloseWithError(err)
 		return
 	}
 
 	for _, path := range container.Volumes {
 		if err := filepath.Walk(path, i.addFile); err != nil {
-			log.Print(err)
+			i.w.CloseWithError(err)
 			return
 		}
 	}

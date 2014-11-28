@@ -32,61 +32,13 @@ func newUntarOutput(conf map[string]string) (output, error) {
 		w:    w,
 		tr:   tr,
 	}
-	go func() {
-		for {
-			hdr, err := tr.Next()
-			if err == io.EOF {
-				return
-			}
-			if err != nil {
-				log.Print(err)
-				return
-			}
-			path := filepath.Join(path, hdr.Name)
-			info := hdr.FileInfo()
-			_, errOld := os.Lstat(path)
-			log.Print(path)
-			if info.IsDir() {
-				if os.IsNotExist(errOld) {
-					if err := os.Mkdir(path, info.Mode()); err != nil {
-						log.Print(err)
-						return
-					}
-				}
-				if err := os.Chown(path, hdr.Uid, hdr.Gid); err != nil {
-					log.Print(err)
-					return
-				}
-				if err := os.Chmod(path, info.Mode()); err != nil {
-					log.Print(err)
-					return
-				}
-			} else {
-				file, err := os.Create(path)
-				if err != nil {
-					log.Print(err)
-					return
-				}
-				if err := file.Chown(hdr.Uid, hdr.Gid); err != nil {
-					log.Print(err)
-					return
-				}
-				if err := file.Chmod(info.Mode()); err != nil {
-					log.Print(err)
-					return
-				}
-				if _, err := io.Copy(file, r); err != nil {
-					log.Print(err)
-					return
-				}
-				if err := os.Chtimes(path, hdr.AccessTime, hdr.ModTime); err != nil { // doesn't work for directories?
-					log.Print(err)
-					return
-				}
-
-			}
+	go func(tr *tar.Reader, r *io.PipeReader, w *io.PipeWriter, path string) {
+		err := untar(tr, r, path)
+		if err != nil {
+			r.CloseWithError(err)
+			w.CloseWithError(err)
 		}
-	}()
+	}(tr, r, w, path)
 	return ti, nil
 }
 
@@ -96,4 +48,51 @@ func (o *untarOutput) Write(p []byte) (n int, err error) {
 
 func (o *untarOutput) Close() error {
 	return o.w.Close()
+}
+
+func untar(tr *tar.Reader, r io.Reader, path string) error {
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		path := filepath.Join(path, hdr.Name)
+		info := hdr.FileInfo()
+		_, errOld := os.Lstat(path)
+		log.Print(path)
+		if info.IsDir() {
+			if os.IsNotExist(errOld) {
+				if err := os.Mkdir(path, info.Mode()); err != nil {
+					return err
+				}
+			}
+			if err := os.Chown(path, hdr.Uid, hdr.Gid); err != nil {
+				return err
+			}
+			if err := os.Chmod(path, info.Mode()); err != nil {
+				return err
+			}
+		} else {
+			file, err := os.Create(path)
+			if err != nil {
+				return err
+			}
+			if err := file.Chown(hdr.Uid, hdr.Gid); err != nil {
+				return err
+			}
+			if err := file.Chmod(info.Mode()); err != nil {
+				return err
+			}
+			if _, err := io.Copy(file, r); err != nil {
+				return err
+			}
+			if err := os.Chtimes(path, hdr.AccessTime, hdr.ModTime); err != nil { // doesn't work for directories?
+				return err
+			}
+
+		}
+	}
 }

@@ -15,8 +15,8 @@ func init() {
 }
 
 type pgpFilter struct {
-	r     io.Reader
-	pw    io.WriteCloser
+	r     *io.PipeReader
+	pw    *io.PipeWriter
 	pgpw  io.WriteCloser
 	ready chan bool
 }
@@ -41,9 +41,11 @@ func newPGPFilter(conf map[string]string) (filter, error) {
 		f.pgpw = w
 		f.ready <- true
 		if err != nil {
-			log.Print(err)
+			pr.CloseWithError(err)
+			pw.CloseWithError(err)
 			return
 		}
+		log.Print("enc returned")
 	}()
 	return f, nil
 }
@@ -54,16 +56,19 @@ func (f *pgpFilter) Link(r io.Reader) error {
 		// so we need to wait for it before we can read from
 		// the writher
 		<-f.ready
-		defer f.pw.Close()
-		defer f.pgpw.Close()
 		if _, err := io.Copy(f.pgpw, r); err != nil {
-			log.Print(err)
+			f.r.CloseWithError(err)
+			f.pw.CloseWithError(err)
 			return
 		}
+		f.pw.Close()
+		f.pgpw.Close()
+		log.Print("Finished filter")
 	}()
 	return nil
 }
 
 func (f *pgpFilter) Read(p []byte) (n int, err error) {
+	log.Print("read")
 	return f.r.Read(p)
 }

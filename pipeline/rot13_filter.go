@@ -28,5 +28,5 @@ func (tp *rot13Filter) Read(p []byte) (n int, err error) {
 			p[i] -= 13
 		}
 	}
-	return
+	return n, err
 }
