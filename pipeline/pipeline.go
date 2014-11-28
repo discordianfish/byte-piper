@@ -20,7 +20,7 @@ var (
 	outputBuffer = flag.Int("b", defaultOutputBuffer, "Size of output buffer")
 )
 
-type pipeline struct {
+type Pipeline struct {
 	input   input
 	filters []filter
 	output  output
@@ -43,7 +43,7 @@ type filterConfig struct {
 }
 
 // New returns a new pipeline.
-func New(configFile string) (*pipeline, error) {
+func New(configFile string) (*Pipeline, error) {
 	data, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func New(configFile string) (*pipeline, error) {
 	if err != nil {
 		return nil, err
 	}
-	p := &pipeline{
+	p := &Pipeline{
 		input:  input,
 		output: output,
 	}
@@ -102,7 +102,7 @@ func New(configFile string) (*pipeline, error) {
 }
 
 // Run starts the pipeline.
-func (p *pipeline) Run() error {
+func (p *Pipeline) Run() error {
 	last := p.input
 	for _, f := range p.filters {
 		log.Printf("Link %v -> %v", last, f)

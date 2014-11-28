@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -10,9 +11,23 @@ import (
 )
 
 var (
-	config        = flag.String("c", "", "path to config")
 	debugEndpoint = flag.String("d", "", "enable pprof debugging endpoint on given host:port")
+	plines        pipelines
 )
+
+type pipelines []*pipeline.Pipeline
+
+func (p *pipelines) String() string {
+	return fmt.Sprintf("%v", *p)
+}
+func (p *pipelines) Set(v string) error {
+	pipe, err := pipeline.New(v)
+	if err != nil {
+		return err
+	}
+	*p = append(*p, pipe)
+	return nil
+}
 
 func main() {
 	var listenErr chan error
@@ -22,20 +37,17 @@ func main() {
 
 		}()
 	}
-
+	flag.Var(&plines, "c", "Path to config, may be repeated")
 	flag.Parse()
-	if *config == "" {
-		log.Fatal("No config provided")
-	}
-	pipe, err := pipeline.New(*config)
-	if err != nil {
-		log.Fatal(err)
+	if len(plines) == 0 {
+		log.Fatal("No configs provided")
 	}
 
-	if err := pipe.Run(); err != nil {
-		log.Fatal(err)
+	for _, p := range plines {
+		if err := p.Run(); err != nil {
+			log.Fatal(err)
+		}
 	}
-
 	if *debugEndpoint != "" {
 		log.Print("Debugging enabled, keep listening for debugging")
 		log.Print(<-listenErr)
