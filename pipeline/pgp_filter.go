@@ -56,13 +56,13 @@ func (f *pgpFilter) Link(r io.Reader) error {
 		// so we need to wait for it before we can read from
 		// the writher
 		<-f.ready
+		defer f.pw.Close()
+		defer f.pgpw.Close()
 		if _, err := io.Copy(f.pgpw, r); err != nil {
 			f.r.CloseWithError(err)
 			f.pw.CloseWithError(err)
 			return
 		}
-		f.pw.Close()
-		f.pgpw.Close()
 		log.Print("Finished filter")
 	}()
 	return nil
