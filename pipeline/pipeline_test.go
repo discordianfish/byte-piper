@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"bytes"
+	"os"
 	"testing"
 )
 
@@ -18,7 +19,7 @@ func TestPipeline(t *testing.T) {
 	in := bytes.NewBuffer([]byte("Hello World"))
 	out := &buffer{} //bytes.Buffer{}
 
-	p := &pipeline{
+	p := &Pipeline{
 		input:  in,
 		output: out,
 	}
@@ -27,5 +28,17 @@ func TestPipeline(t *testing.T) {
 	}
 	if out.String() != "Hello World" {
 		t.Fatal("Unexpected: ", out.String())
+	}
+}
+
+func TestEnvMerge(t *testing.T) {
+	conf := map[string]string{
+		"foo": "bar",
+		"bla": "blub",
+	}
+	os.Setenv("FILTER_bla", "baz")
+	conf = mergeEnv("FILTER_", conf)
+	if conf["foo"] != "bar" || conf["bla"] != "baz" {
+		t.Fatal("Unexpected conf: ", conf)
 	}
 }

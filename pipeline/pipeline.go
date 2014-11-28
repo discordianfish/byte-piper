@@ -8,6 +8,8 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
+	"strings"
 )
 
 const defaultOutputBuffer = 1 * 1024 * 1024
@@ -56,7 +58,7 @@ func New(configFile string) (*Pipeline, error) {
 	if !ok {
 		return nil, fmt.Errorf("Invalid input type %s", conf.Input.Type)
 	}
-	input, err := inputNew(conf.Input.Config)
+	input, err := inputNew(mergeEnv("INPUT_", conf.Input.Config))
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +66,7 @@ func New(configFile string) (*Pipeline, error) {
 	if !ok {
 		return nil, fmt.Errorf("Invalid output type %s", conf.Output.Type)
 	}
-	output, err := outputNew(conf.Output.Config)
+	output, err := outputNew(mergeEnv("OUTPUT_", conf.Output.Config))
 	if err != nil {
 		return nil, err
 	}
@@ -74,6 +76,7 @@ func New(configFile string) (*Pipeline, error) {
 	}
 
 	filterConf := &conf.Filters
+	prefix := "FILTER_"
 	for {
 		if filterConf.Type == "" {
 			break
@@ -83,7 +86,7 @@ func New(configFile string) (*Pipeline, error) {
 		if !ok {
 			return nil, fmt.Errorf("Unknown filter %s", filterConf.Type)
 		}
-		filter, err := filterNew(filterConf.Config)
+		filter, err := filterNew(mergeEnv(prefix, filterConf.Config))
 		if err != nil {
 			return nil, err
 		}
@@ -93,9 +96,10 @@ func New(configFile string) (*Pipeline, error) {
 		}
 		fc := &filterConfig{}
 		if err := json.Unmarshal(filterConf.Next, fc); err != nil {
-			return nil, fmt.Errorf("Coudln't unmarshal %s: %s", filterConf.Next, err)
+			return nil, fmt.Errorf("Couldn't unmarshal %s: %s", filterConf.Next, err)
 		}
 		filterConf = fc
+		prefix = prefix + "FILTER_"
 
 	}
 	return p, nil
@@ -127,8 +131,21 @@ func (p *Pipeline) Run() error {
 	return nil
 }
 
-func assert(err error) {
-	if err != nil {
-		log.Fatal(err)
+// Merge config with env, envs wins
+
+// TYPE_KEY=VALUE
+func mergeEnv(prefix string, conf map[string]string) map[string]string {
+	for _, env := range os.Environ() {
+		parts := strings.SplitN(env, "=", 2)
+		if len(parts) != 2 {
+			panic("Invalid env variable: " + env)
+		}
+		if !strings.HasPrefix(parts[0], prefix) {
+			continue
+		}
+		key := strings.TrimPrefix(parts[0], prefix)
+		value := parts[1]
+		conf[key] = value
 	}
+	return conf
 }
