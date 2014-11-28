@@ -14,8 +14,8 @@ func init() {
 }
 
 type commandFilter struct {
-	stdin  io.Writer
-	stdout io.Reader
+	stdout  io.Reader
+	command *exec.Cmd
 }
 
 func newCommandFilter(conf map[string]string) (filter, error) {
@@ -28,29 +28,26 @@ func newCommandFilter(conf map[string]string) (filter, error) {
 		return nil, err
 	}
 	args := []string{}
-	if len(args) > 1 {
+	if len(cmd) > 1 {
 		args = cmd[1:]
 	}
+	log.Printf("cmd: %s, args: %#v (from %s)", cmd[0], args, c)
 	command := exec.Command(cmd[0], args...)
-	in, err := command.StdinPipe()
-	if err != nil {
-		return nil, err
-	}
 	out, err := command.StdoutPipe()
 	if err != nil {
 		return nil, err
 	}
 	return &commandFilter{
-		stdin:  in,
-		stdout: out,
-	}, command.Run()
+		stdout:  out,
+		command: command,
+	}, nil
 }
 
 func (f *commandFilter) Link(r io.Reader) error {
+	f.command.Stdin = r
 	go func() {
-		if _, err := copy(f.stdin, r); err != nil {
-			log.Print(err)
-			return
+		if err := f.command.Run(); err != nil {
+			log.Printf("Couldn't execute %s: %s", f.command.Path, err)
 		}
 	}()
 	return nil
