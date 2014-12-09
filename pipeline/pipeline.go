@@ -117,15 +117,15 @@ func (p *Pipeline) Run() error {
 	}
 	buf := bufio.NewWriterSize(p.output, *outputBuffer)
 	if _, err := io.Copy(buf, last); err != nil {
-		return err
+		return fmt.Errorf("Couldn't pipe data: %s", err)
 	}
 	log.Print("copied")
 	if err := buf.Flush(); err != nil {
-		return err
+		return fmt.Errorf("Couldn't flush data: %s", err)
 	}
 	log.Print("flushed")
 	if err := p.output.Close(); err != nil {
-		return err
+		return fmt.Errorf("Couldn't close pipeline: %s", err)
 	}
 	log.Print("closed")
 	return nil

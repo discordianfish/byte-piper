@@ -37,7 +37,7 @@ func newTarInput(conf map[string]string) (input, error) {
 		defer ti.tarWriter.Close() // This doesn *not* close the embedded writer
 		defer w.Close()            // So we do it here
 		if err := filepath.Walk(path, ti.addFile); err != nil {
-			log.Print(err)
+			log.Printf("Couldn't walk %s: %s", path, err)
 		}
 	}(w)
 	return ti, nil
