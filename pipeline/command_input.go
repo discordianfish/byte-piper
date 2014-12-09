@@ -2,6 +2,8 @@ package pipeline
 
 import (
 	"errors"
+	"io"
+	"os"
 	"os/exec"
 
 	shlex "github.com/flynn/go-shlex"
@@ -29,5 +31,13 @@ func newCommandInput(conf map[string]string) (input, error) {
 	if err != nil {
 		return nil, err
 	}
+	stderr, err := command.StderrPipe()
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		io.Copy(os.Stdout, stderr)
+	}()
+	// FIXME: close pipe on error
 	return out, command.Start()
 }
