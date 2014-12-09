@@ -6,12 +6,14 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+	"time"
 
 	"github.com/docker-infra/bytes-piper/pipeline"
 )
 
 var (
-	debugEndpoint = flag.String("d", "", "enable pprof debugging endpoint on given host:port")
+	debugEndpoint = flag.String("d", "", "Enable pprof debugging endpoint on given host:port")
+	loop          = flag.Duration("l", 0, "Repeat pipelines at given interval")
 	plines        pipelines
 )
 
@@ -43,10 +45,19 @@ func main() {
 		log.Fatal("No configs provided")
 	}
 
-	for _, p := range plines {
-		if err := p.Run(); err != nil {
-			log.Fatal(err)
+	for {
+		for _, p := range plines {
+			if err := p.Run(); err != nil {
+				log.Fatal("Error running pipeline: ", err)
+			}
 		}
+		if *loop == 0 {
+			break
+		}
+		plines = pipelines{}
+		log.Print("Sleeping for ", *loop)
+		time.Sleep(*loop)
+		flag.Parse() // We can do that nicer..
 	}
 	if *debugEndpoint != "" {
 		log.Print("Debugging enabled, keep listening for debugging")
