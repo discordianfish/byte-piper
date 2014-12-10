@@ -147,7 +147,7 @@ func TestPGP(t *testing.T) {
 	}
 
 	if out.String() != expectedText {
-		t.Fatal("Unexpected string %s", out.String())
+		t.Fatal("Unexpected string ", out.String())
 	}
 }
 
