@@ -106,29 +106,30 @@ func New(configFile string) (*Pipeline, error) {
 }
 
 // Run starts the pipeline.
-func (p *Pipeline) Run() error {
+func (p *Pipeline) Run() (int64, error) {
 	last := p.input
 	for _, f := range p.filters {
 		log.Printf("Link %v -> %v", last, f)
 		if err := f.Link(last); err != nil {
-			return err
+			return 0, err
 		}
 		last = f
 	}
 	buf := bufio.NewWriterSize(p.output, *outputBuffer)
-	if _, err := io.Copy(buf, last); err != nil {
-		return fmt.Errorf("Couldn't pipe data: %s", err)
+	n, err := io.Copy(buf, last)
+	if err != nil {
+		return n, fmt.Errorf("Couldn't pipe data: %s", err)
 	}
 	log.Print("copied")
 	if err := buf.Flush(); err != nil {
-		return fmt.Errorf("Couldn't flush data: %s", err)
+		return n, fmt.Errorf("Couldn't flush data: %s", err)
 	}
 	log.Print("flushed")
 	if err := p.output.Close(); err != nil {
-		return fmt.Errorf("Couldn't close pipeline: %s", err)
+		return n, fmt.Errorf("Couldn't close pipeline: %s", err)
 	}
 	log.Print("closed")
-	return nil
+	return n, nil
 }
 
 // Merge config with env, envs wins
