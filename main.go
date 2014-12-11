@@ -10,7 +10,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/docker-infra/bytes-piper/pipeline"
+	"github.com/docker-infra/byte-piper/pipeline"
 )
 
 var (
