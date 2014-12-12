@@ -53,6 +53,7 @@ func (p *pipelines) Set(v string) error {
 func init() {
 	prometheus.MustRegister(backupDuration)
 	prometheus.MustRegister(backupSeen)
+	prometheus.MustRegister(backupSize)
 	prometheus.MustRegister(backupsTotal)
 	prometheus.MustRegister(backupsFailed)
 }
