@@ -2,11 +2,9 @@ package pipeline
 
 import (
 	"errors"
-	"io"
+	"log"
 	"os"
 	"os/exec"
-
-	shlex "github.com/flynn/go-shlex"
 )
 
 func init() {
@@ -18,26 +16,28 @@ func newCommandInput(conf map[string]string) (input, error) {
 	if c == "" {
 		return nil, errors.New("Require command")
 	}
-	cmd, err := shlex.Split(c)
+	cmd, args, err := parseCommand(c)
 	if err != nil {
 		return nil, err
 	}
-	args := []string{}
-	if len(args) > 1 {
-		args = cmd[1:]
-	}
-	command := exec.Command(cmd[0], args...)
+	log.Printf("cmd: %s, args: %#v (from %s)", cmd, args, c)
+	command := exec.Command(cmd, args...)
+	command.Stderr = os.Stderr
 	out, err := command.StdoutPipe()
 	if err != nil {
 		return nil, err
 	}
-	stderr, err := command.StderrPipe()
-	if err != nil {
+
+	if err := command.Start(); err != nil {
 		return nil, err
 	}
+
 	go func() {
-		io.Copy(os.Stdout, stderr)
+		if err := command.Wait(); err != nil {
+			log.Print(err)
+		}
+		out.Close()
 	}()
-	// FIXME: close pipe on error
-	return out, command.Start()
+	return out, nil
+
 }

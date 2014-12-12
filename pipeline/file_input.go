@@ -1,6 +1,9 @@
 package pipeline
 
-import "os"
+import (
+	"errors"
+	"os"
+)
 
 type fileInput struct {
 	filename string
@@ -11,5 +14,8 @@ func init() {
 }
 
 func newFileInput(conf map[string]string) (input, error) {
+	if conf["path"] == "" {
+		return nil, errors.New("path required")
+	}
 	return os.Open(conf["path"])
 }

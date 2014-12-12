@@ -5,8 +5,6 @@ import (
 	"io"
 	"log"
 	"os/exec"
-
-	shlex "github.com/flynn/go-shlex"
 )
 
 func init() {
@@ -23,16 +21,12 @@ func newCommandFilter(conf map[string]string) (filter, error) {
 	if c == "" {
 		return nil, errors.New("Require command")
 	}
-	cmd, err := shlex.Split(c)
+	cmd, args, err := parseCommand(c)
 	if err != nil {
 		return nil, err
 	}
-	args := []string{}
-	if len(cmd) > 1 {
-		args = cmd[1:]
-	}
-	log.Printf("cmd: %s, args: %#v (from %s)", cmd[0], args, c)
-	command := exec.Command(cmd[0], args...)
+	log.Printf("cmd: %s, args: %#v (from %s)", cmd, args, c)
+	command := exec.Command(cmd, args...)
 	out, err := command.StdoutPipe()
 	if err != nil {
 		return nil, err

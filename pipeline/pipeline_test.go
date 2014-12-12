@@ -23,7 +23,7 @@ func TestPipeline(t *testing.T) {
 		input:  in,
 		output: out,
 	}
-	if err := p.Run(); err != nil {
+	if _, err := p.Run(); err != nil {
 		t.Fatal(err)
 	}
 	if out.String() != "Hello World" {
