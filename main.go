@@ -82,6 +82,7 @@ func main() {
 
 	for {
 		for _, file := range plines {
+			log.Print("# Running ", file)
 			backupsTotal.WithLabelValues(file).Inc()
 			pipe, err := pipeline.New(file)
 			if err != nil {
